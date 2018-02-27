@@ -26,9 +26,10 @@ defmodule Bolt.Sips do
     - `:pool_size` - maximum pool size;
     - `:max_overflow` - maximum number of workers created if pool is empty
     - `:timeout` - Connect timeout in milliseconds (default: `#{@timeout}`)
-       Poolboy will block the current process and wait for an available worker,
-       failing after a timeout, when the pool is full;
+    Poolboy will block the current process and wait for an available worker,
+    failing after a timeout, when the pool is full;
     - `:retry_linear_backoff` -  with Bolt, the initial handshake sequence (happening before sending any commands to the server) is represented by two important calls, executed in sequence: `handshake` and `init`, and they must both succeed, before sending any (Cypher) requests. You can see the details in the [Bolt protocol](http://boltprotocol.org/v1/#handshake) specs. This sequence is also sensitive to latencies, such as: network latencies, busy servers, etc., and because of that we're introducing a simple support for retrying the handshake (and the subsequent requests) with a linear backoff, and try the handshake sequence (or the request) a couple of times before giving up. See examples below.
+    - `:supervisor_name` - If present, it will be used for set the supervisor name, to avoid already started errors with multiple supervisors.
 
   ## Example of valid configurations (i.e. defined in config/dev.exs) and usage:
 
@@ -60,7 +61,8 @@ defmodule Bolt.Sips do
   """
   @spec start_link(Keyword.t()) :: Supervisor.on_start()
   def start_link(opts) do
-    Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
+    supervisor_name = Keyword.get(opts, :supervisor_name, __MODULE__) 
+    Supervisor.start_link(__MODULE__, opts, name: supervisor_name)
   end
 
   @doc false
