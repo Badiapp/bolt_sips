@@ -9,7 +9,7 @@ defmodule Bolt.Sips do
   @timeout 15_000
   # @max_rows     500
 
-  alias Bolt.Sips.{Query, Transaction, Utils, ConfigAgent}
+  alias Bolt.Sips.{Query, Transaction, Utils, Config}
 
   @type conn :: DBConnection.conn()
   @type transaction :: DBConnection.t()
@@ -76,11 +76,11 @@ defmodule Bolt.Sips do
         :socket,
         if(Keyword.get(cnf, :ssl), do: ssl, else: Keyword.get(cnf, :socket))
       )
+      Config.put_config(cnf)
 
-    children = [
-      {Bolt.Sips.ConfigAgent, cnf},
-      DBConnection.child_spec(Bolt.Sips.Protocol, pool_config(cnf))
-    ]
+      children = [
+        DBConnection.child_spec(Bolt.Sips.Protocol, pool_config(cnf, opts[:name]))
+      ]
 
     Supervisor.init(children, strategy: :one_for_one)
   end
@@ -146,7 +146,7 @@ defmodule Bolt.Sips do
   @doc """
   returns an environment specific Bolt.Sips configuration.
   """
-  def config, do: ConfigAgent.get_config()
+  def config, do: Config.get_config()
 
   @doc false
   def config(key), do: Keyword.get(config(), key)
