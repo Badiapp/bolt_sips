@@ -29,7 +29,7 @@ defmodule Bolt.Sips do
     Poolboy will block the current process and wait for an available worker,
     failing after a timeout, when the pool is full;
     - `:retry_linear_backoff` -  with Bolt, the initial handshake sequence (happening before sending any commands to the server) is represented by two important calls, executed in sequence: `handshake` and `init`, and they must both succeed, before sending any (Cypher) requests. You can see the details in the [Bolt protocol](http://boltprotocol.org/v1/#handshake) specs. This sequence is also sensitive to latencies, such as: network latencies, busy servers, etc., and because of that we're introducing a simple support for retrying the handshake (and the subsequent requests) with a linear backoff, and try the handshake sequence (or the request) a couple of times before giving up. See examples below.
-    - `:supervisor_name` - If present, it will be used for set the supervisor name, to avoid already started errors with multiple supervisors.
+    - `:name` - If present, it will be used for set the supervisor name, to avoid already started errors with multiple supervisors.
 
   ## Example of valid configurations (i.e. defined in config/dev.exs) and usage:
 
@@ -61,8 +61,8 @@ defmodule Bolt.Sips do
   """
   @spec start_link(Keyword.t()) :: Supervisor.on_start()
   def start_link(opts) do
-    supervisor_name = Keyword.get(opts, :supervisor_name, __MODULE__) 
-    Supervisor.start_link(__MODULE__, opts, name: supervisor_name)
+    name = Keyword.get(opts, :name, __MODULE__)
+    Supervisor.start_link(__MODULE__, opts, name: name)
   end
 
   @doc false
@@ -89,6 +89,7 @@ defmodule Bolt.Sips do
   Returns a pool name which can be used to acquire a connection.
   """
   def conn, do: pool_name()
+  def conn(name), do: pool_name(name)
 
   ## Query
   ########################
@@ -159,6 +160,7 @@ defmodule Bolt.Sips do
 
   @doc false
   def pool_name, do: @pool_name
+  def pool_name(name), do: String.to_atom("#{name}_pool")
 
   ## Helpers
   ######################
@@ -167,9 +169,9 @@ defmodule Bolt.Sips do
   #   Keyword.put_new(opts, :timeout, @timeout)
   # end
 
-  defp pool_config(cnf) do
+  defp pool_config(cnf, name) do
     [
-      name: {:local, pool_name()},
+      name: {:local, pool_name(name)},
       pool: Keyword.get(cnf, :pool),
       pool_size: Keyword.get(cnf, :pool_size),
       pool_overflow: Keyword.get(cnf, :max_overflow)
